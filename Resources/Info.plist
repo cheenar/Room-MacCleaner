@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleIdentifier</key><string>local.peter.room</string>
+    <key>CFBundleName</key><string>Room</string>
+    <key>CFBundleDisplayName</key><string>Room</string>
+    <key>CFBundleExecutable</key><string>Room</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>1.0</string>
+    <key>CFBundleIconFile</key><string>Room</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSDesktopFolderUsageDescription</key><string>Room scans file sizes on your Desktop to help you review disk usage.</string>
+    <key>NSDocumentsFolderUsageDescription</key><string>Room scans file sizes in Documents to help you review disk usage.</string>
+    <key>NSDownloadsFolderUsageDescription</key><string>Room scans Downloads for large files and installers you may no longer need.</string>
+    <key>NSRemovableVolumesUsageDescription</key><string>Room scans a removable volume only when you choose it.</string>
+    <key>NSNetworkVolumesUsageDescription</key><string>Room scans a network folder only when you choose it.</string>
+    <key>NSPrincipalClass</key><string>NSApplication</string>
+</dict></plist>
