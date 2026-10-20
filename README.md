@@ -8,6 +8,8 @@
 
 ---
 
+https://github.com/user-attachments/assets/0f60acaf-86cb-4dd8-8a9c-25a37d07d4d6
+
 ![Room’s native cleanup view, with storage totals, file sizes and a review action](docs/room-screenshot.png)
 
 <p align="center"><sub>Illustrative scan results.</sub></p>
