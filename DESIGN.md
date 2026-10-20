@@ -1,5 +1,38 @@
 # Room
 
+## October 20: focused interface and local distribution
+
+Engineering review: adapt Iridium's stable certificate signing, user Applications install and CLI symlink. Reuse an existing trusted local identity without changing keychain trust; provide an explicit one-time identity setup command. Preserve the bundle identifier and user data. Test installs in disposable directories, including paths with spaces and conflicting files.
+
+Product review: use page names as headings, remove slogans and repeated reassurance, and keep decision-making information in Details, Review and Access. Keep the free-space distinction and review-before-Trash behavior. The README is the product introduction; engineering and validation notes live separately. SEO and advertising placement do not apply to a native app.
+
+Reviewed layout before implementation:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ ● ● ●   Room                         [Storage] [Folder…] [Scan Mac]      │
+├──────────────┬───────────────────────────────────────────────────────────┤
+│ Room         │ Cleanup                                      Last scan   │
+│              │ Macintosh HD                              31 GB free     │
+│ Cleanup      │ ███████████████████████████████░░░                       │
+│ Large files  │ 463 GB used of 494 GB           111 GB with purgeable     │
+│ Storage map  │                                                           │
+│ Access       │ [Rebuildable 2 GB] [Review 28 GB] [Scanned 250 GB]        │
+│ History      │                                                           │
+│              │ [Search…]                  [All types ▾]          [☑ ▾] │
+│              │ 24 items                                   Largest first │
+│              │ □  Package cache                    1.2 GB   [ⓘ] [↗]    │
+│              │    ~/Library/Caches/…                                    │
+│              │ □  Project output                     800 MB [ⓘ] [↗]    │
+│              ├───────────────────────────────────────────────────────────┤
+│              │ 0 selected                         [Open Trash] [Review]  │
+└──────────────┴───────────────────────────────────────────────────────────┘
+```
+
+Harness review: retain core cleanup tests and add isolated packaging checks. Verify certificate-based designated requirements, CLI help, strict signatures and the installed native interface. No window-manager e2e or keychain trust changes are needed.
+
+## Original implementation
+
 Native, local macOS disk utility. No network, daemon, administrator helper, or automatic cleanup.
 
 Engineering: one read-only filesystem traversal, allocated disk blocks, no following symlinks or crossing volumes. Keep the UI responsive with background scanning and cancellation. Cleanup accepts only items from a completed scan, revalidates their identity and entire metadata tree, rejects protected paths and overlapping selections, and uses Finder Trash. Permanent space recovery is a separate Finder action.

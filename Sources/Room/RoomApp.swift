@@ -28,8 +28,8 @@ enum Page: String, CaseIterable, Identifiable {
   case cleanup = "Cleanup"
   case large = "Large files"
   case map = "Storage map"
-  case access = "Access & coverage"
-  case history = "Cleanup history"
+  case access = "Access"
+  case history = "History"
   var id: Self { self }
   var symbol: String {
     switch self {
@@ -144,7 +144,7 @@ final class RoomModel: ObservableObject {
         self.cancellation = nil
         self.staleAfterCleanup = false
         if report.cancelled {
-          self.notice = "Scan stopped. Results are partial; complete a scan before cleaning."
+          self.notice = "Scan stopped. Finish a scan before cleaning."
         }
       }
     }
@@ -156,7 +156,7 @@ final class RoomModel: ObservableObject {
     panel.canChooseFiles = false
     panel.prompt = "Scan folder"
     panel.message =
-      "Choose a folder to inspect. Cleanup is restricted to recognized items in your home folder."
+      "Cleanup is available for supported items in your home folder."
     if panel.runModal() == .OK, let url = panel.url { scan(roots: [url]) }
   }
   func selectVisibleRebuildable() {
@@ -179,7 +179,7 @@ final class RoomModel: ObservableObject {
           self.staleAfterCleanup = true
           let bytes = result.receipts.reduce(Int64(0)) { $0 + $1.bytes }
           self.notice =
-            "Moved \(result.receipts.count) items (\(formatBytes(bytes))) to Trash. Empty Trash in Finder to recover space. Scan again to refresh totals."
+            "Moved \(result.receipts.count) \(result.receipts.count == 1 ? "item" : "items") (\(formatBytes(bytes))) to Trash. Empty Trash in Finder to free space."
           if !result.failures.isEmpty { self.error = result.failures.joined(separator: "\n\n") }
           self.disk = DiskSpace.current()
         }

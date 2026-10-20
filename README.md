@@ -1,55 +1,70 @@
-# Room
+<p align="center">
+  <img src="docs/room-icon.svg" width="88" height="88" alt="Room icon">
+</p>
+<h1 align="center">Room</h1>
+<p align="center"><strong>See where your disk space goes. Take back what you don’t need.</strong></p>
+<p align="center">A native macOS disk utility with a clear view of your files and a review step before every cleanup.</p>
+<p align="center"><a href="#install">Install</a> · <a href="#a-clearer-view-of-your-mac">Features</a> · <a href="docs/DEVELOPMENT.md">Build & signing</a></p>
 
-A small, native macOS utility for understanding disk usage and reviewing cleanup candidates. SwiftUI, no third-party packages, no network requests, and no background services. macOS 14 or later.
+---
 
-Open `~/Applications/Room.app`. A read-only scan starts on launch. Use Cleanup to review rebuildable files, Large files for personal files and downloaded installers, Storage map to drill into folders, and Access & coverage to see what macOS prevented Room from reading.
+![Room’s native cleanup view, with storage totals, file sizes and a review action](docs/room-screenshot.png)
 
-Nothing is selected automatically. Select items, choose **Review selection**, inspect the paths and explanations, then choose **Move to Trash**. Close related apps first. Free space increases after you empty Trash in Finder. Cleanup history can restore items still in Trash and will never overwrite a new item at the original location.
+<p align="center"><sub>Illustrative scan results.</sub></p>
 
-## What it finds
+## A clearer view of your Mac
 
-- Verified package download caches are labeled rebuildable. Other app cache folders and `~/.cache` entries require review: they can contain IDE local history, model downloads, offline files or installed runtimes.
-- Compiler module caches are labeled rebuildable. Other Xcode DerivedData, Swift `.build`, Rust `target`, and `node_modules` beside a project manifest require review: they can contain screenshots, demo output, test evidence, locally edited checkouts or dependencies. Dependencies inside hidden tool and extension directories are excluded.
-- Logs over 30 days old, with at least 1 MB allocated.
-- Xcode archives and device support, explicitly marked for review.
-- Downloaded `.dmg`, `.pkg`, `.iso`, and `.xip` installers.
-- Personal files with at least 100 MB allocated, explicitly marked for review.
-- Simulator storage is shown with a link to [Apple’s component management guide](https://developer.apple.com/documentation/xcode/downloading-and-installing-additional-xcode-components). Room does not manually delete registered simulator devices or runtime images.
+Running out of space shouldn’t mean guessing which folders you can delete. Room shows the large files, cached downloads and project output taking up your disk, with the context to make a careful choice.
 
-Default scan roots: your home, `/Applications`, `/Library`, `/private/var`, `/Users/Shared`, `/opt`, `/usr/local`. iCloud Drive and File Provider roots are skipped by default because listing their metadata can stall; the coverage view explains the omission. Choose one explicitly with Scan Folder to inspect it. Add any other folder or volume the same way. Cleanup is restricted to recognized candidates within your home directory. System folders and other users are inspection only. Optional Full Disk Access improves coverage; the app explains how to grant it. A stopped scan is partial and cannot be used for cleanup.
+- **Follow the space.** Drill through a storage map, largest folders first.
+- **Find the leftovers.** Surface package caches, compiler caches, old logs and downloaded installers.
+- **Keep the important things.** App caches and project output get a separate review category because they can contain local history, offline files or work you want to keep.
+- **See the full picture.** Browse large files, reveal anything in Finder, and inspect locations macOS couldn’t scan.
+- **Clean with a way back.** Review the exact paths, move selected items to Trash, and restore them from History while they remain there.
 
-## Accounting and safety
+Room uses native Mac controls and runs entirely on your device. No account, uploads, third-party packages or background service.
 
-Sizes use allocated disk blocks, so sparse files do not count their entire logical capacity. Hard links count once across scan roots. Symlinks are not followed, and the scanner does not cross into another mounted volume. Folder totals include readable contents; the map lists children at least 1 MB in size. APFS clones, snapshots, inaccessible folders, volatile files and purgeable space can cause differences from macOS Storage and from the space ultimately recovered. “Free” and “available for important use” are displayed separately.
+## From full disk to breathing room
 
-Before cleanup, Room checks each path against the cleanup policy and scan report, checks the object identity and metadata, rejects redirected paths and overlapping selections, and repeats a metadata signature of the entire selected tree. Changed items require another scan. All selected items pass preflight before the first move. A running app can still recreate data; closing related apps is recommended.
+1. **Scan your Mac** or choose a folder.
+2. **Review what’s taking up space**, with file sizes and an explanation for each candidate.
+3. **Move what you choose to Trash.** Empty Trash in Finder when you’re ready to reclaim the space.
 
-Cleanup uses [macOS `FileManager.trashItem`](https://developer.apple.com/documentation/foundation/filemanager/trashitem(at:resultingitemurl:)) and records the resulting Trash paths in `~/Library/Application Support/Room/History.json` with user-only permissions. Room does not permanently delete anything or empty Trash. Restore receipts remain local. Deleting synced personal files can propagate to other devices.
+Nothing is selected automatically. Room checks the selected files again before moving them. Your projects, model downloads and app data deserve a closer look than a blanket “clean everything” button.
 
-## Build and verify
+## Install
+
+Requires **macOS 14 or later** and an **Xcode toolchain with Swift 6**. From the project directory:
 
 ```sh
-swift test
-zsh scripts/build.sh --install
+make install
 open "$HOME/Applications/Room.app"
 ```
 
-The build script creates an ad-hoc signed standalone app in `dist/Room.app` and optionally installs it in your user Applications folder. No Xcode project generation, package downloads or paid signing identity is needed for local use.
+This installs **Room.app** in `~/Applications` and the read-only **room-scan** command in `~/.local/bin`.
 
-Use the same scanner without the UI:
+For a stable local signing identity, run `make signing-identity` once before installing. Room can also reuse an existing **Iridium Local Signing** identity. [Signing and custom install locations →](docs/DEVELOPMENT.md#local-signing)
+
+For broader scan coverage, add Room in **System Settings → Privacy & Security → Full Disk Access**. The app shows skipped locations under **Access**.
+
+## Your files stay on your Mac
+
+Scans read file sizes and metadata locally. Cleanup uses macOS Trash and records restore locations on your Mac. Room distinguishes immediately free space from space macOS can reclaim, and shows gaps where protected folders or cloud providers limit the scan.
+
+Room leaves system data and snapshots to macOS, and simulator management to Xcode. [How scanning and cleanup work →](docs/DEVELOPMENT.md#scanning-and-cleanup)
+
+## Prefer the terminal?
+
+The same scanner is available as a read-only CLI:
 
 ```sh
-swift run -c release room-scan
-swift run -c release room-scan ~/programming
-swift run -c release room-scan --json ~/Downloads
+room-scan ~/Downloads
+room-scan --json ~/Projects
+room-scan --help
 ```
 
-The CLI is read-only and has no cleanup command. JSON reports contain local paths and metadata, not file contents. Keep exported reports private.
+Add `~/.local/bin` to your `PATH`, or use `~/.local/bin/room-scan` directly.
 
-Core tests cover project-manifest requirements, nested candidate suppression, symlinks, changed or replaced content, redirected parents, sparse files, hard links, secrets and protected paths, old logs, cancelled scans, forged/duplicate selection, whole-batch preflight, overlapping roots, and trash/restore with disposable fixtures.
+---
 
-Verified locally on October 19, 2026: 18 tests pass, including a complete native macOS Trash and restore cycle using generated test data. Release build, strict Swift formatting, plist validation and strict app signature verification pass. Native UI checks confirmed selection, the review sheet, cancellation, folder drill-down and the layout in a narrow tiled window. No existing user files were cleaned during development.
-
-A live default scan completed in 85.7 seconds across 2,599,433 entries, with 164 reported coverage gaps. It found about 46.5 GB in caches, logs and build output, and about 20 GB in device-support data requiring review. These are allocated-size candidates, not a guarantee of recoverable free space. The standalone app occupies approximately 2.8 MB; Swift build artifacts remain visible as rebuildable output in the source project.
-
-The subsequent safety audit tightened that initial classification: unknown app caches and project output now require review, and dependencies belonging to installed tools are excluded. Twenty tests pass, including regressions for editor Local History, screenshots in build folders and hidden tool dependencies. JetBrains documents why its system cache must not be treated as wholly disposable: it also stores [Local History](https://www.jetbrains.com/help/idea/local-history.html).
+Built with **SwiftUI**, **Swift Package Manager**, and **zero third-party dependencies**. [Development, tests and local signing →](docs/DEVELOPMENT.md)

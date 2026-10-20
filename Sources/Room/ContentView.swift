@@ -16,11 +16,6 @@ struct ContentView: View {
         List(Page.allCases, selection: $model.page) { page in
           Label(page.rawValue, systemImage: page.symbol).padding(.vertical, 6).tag(page)
         }.listStyle(.sidebar)
-        VStack(alignment: .leading, spacing: 8) {
-          Label("On your Mac. Only.", systemImage: "internaldrive").font(.caption.weight(.medium))
-          Text("No uploads. No background agent.\nYou choose what goes.").font(.caption)
-            .foregroundStyle(.secondary).lineSpacing(3)
-        }.padding(20)
       }
       .navigationSplitViewColumnWidth(min: 195, ideal: 215, max: 250)
     } detail: {
@@ -87,7 +82,7 @@ struct ContentView: View {
       }.padding(28).frame(width: 510)
     }
     .alert(
-      "Room needs your attention",
+      "Unable to complete action",
       isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })
     ) {
       Button("OK") { model.error = nil }
@@ -101,10 +96,7 @@ struct ContentView: View {
   }
   private var header: some View {
     HStack(alignment: .top) {
-      VStack(alignment: .leading, spacing: 7) {
-        Text(title).font(.system(size: 32, weight: .semibold, design: .rounded))
-        Text(subtitle).font(.callout).foregroundStyle(.secondary)
-      }
+      Text(model.page?.rawValue ?? "Cleanup").font(.system(size: 28, weight: .semibold))
       Spacer()
       if let report = model.report, !model.scanning {
         VStack(alignment: .trailing, spacing: 5) {
@@ -115,24 +107,6 @@ struct ContentView: View {
           Text(report.date, style: .time).font(.caption.monospacedDigit())
         }.padding(.top, 5)
       }
-    }
-  }
-  private var title: String {
-    switch model.page {
-    case .large: "Big files. Your call."
-    case .map: "Follow the space."
-    case .access: "Know what’s been scanned."
-    case .history: "A way back."
-    default: "Make a little room."
-    }
-  }
-  private var subtitle: String {
-    switch model.page {
-    case .large: "Large files and installers, sorted by the space they occupy."
-    case .map: "Open a folder to see what’s taking up room inside."
-    case .access: "Protected folders and system data can leave gaps in the picture."
-    case .history: "Restore items while they are still in Trash."
-    default: "Find the leftovers. Review the details. Keep what matters."
     }
   }
   private var diskCard: some View {
@@ -171,9 +145,11 @@ struct ContentView: View {
       if let available = model.disk.availableForImportantUsage,
         available > model.disk.free + 5_000_000_000
       {
-        Text(
-          "macOS reports \(formatBytes(available)) available for important use, including purgeable space. The number above is free space right now."
-        ).font(.caption).foregroundStyle(.secondary)
+        LabeledContent("Available with purgeable space", value: formatBytes(available))
+          .font(.caption).foregroundStyle(.secondary)
+          .help(
+            "Includes storage macOS can reclaim automatically. Free space above is available immediately."
+          )
       }
     }.padding(22).background(.background, in: RoundedRectangle(cornerRadius: 18)).overlay(
       RoundedRectangle(cornerRadius: 18).strokeBorder(Color.primary.opacity(0.06)))
@@ -182,7 +158,7 @@ struct ContentView: View {
     VStack(alignment: .leading, spacing: 10) {
       HStack(spacing: 10) {
         ProgressView().controlSize(.small)
-        Text("Looking for room…").font(.headline)
+        Text("Scanning…").font(.headline)
         Spacer()
         Text("\(model.scannedCount.formatted()) entries").font(.caption.monospacedDigit())
           .foregroundStyle(.secondary)
@@ -190,7 +166,6 @@ struct ContentView: View {
       Text(displayPath(model.currentPath)).font(.caption.monospaced()).lineLimit(1).truncationMode(
         .middle
       ).foregroundStyle(.secondary)
-      Text("Read-only scan · no files are changed").font(.caption).foregroundStyle(.secondary)
     }.padding(18).background(Color.orange.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
   }
   private func noticeView(_ notice: String) -> some View {
@@ -207,65 +182,33 @@ struct ContentView: View {
         HStack(spacing: 12) {
           statCard(
             "Rebuildable", value: formatBytes(report.rebuildableBytes),
-            caption: "Caches, logs & build output", symbol: "arrow.triangle.2.circlepath",
+            symbol: "arrow.triangle.2.circlepath",
             color: .green)
           statCard(
-            "Review first",
+            "Review",
             value: formatBytes(
               report.candidates.filter { !$0.kind.rebuildable }.reduce(0) { $0 + $1.bytes }),
-            caption: "Personal files & archives", symbol: "eye", color: .orange)
+            symbol: "eye", color: .orange)
           statCard(
             "Scanned", value: formatBytes(report.scannedBytes),
-            caption: "\(report.issues.count) coverage gaps", symbol: "viewfinder", color: .blue)
+            symbol: "viewfinder", color: .blue)
         }
         if !report.issues.isEmpty {
           Button {
             model.page = .access
           } label: {
             Label(
-              "\(report.issues.count) locations could not be fully scanned. View coverage.",
+              "\(report.issues.count) skipped locations",
               systemImage: "lock.shield"
             )
             .font(.caption).foregroundStyle(.secondary)
           }.buttonStyle(.plain)
         }
-        let simulatorPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
-          "Library/Developer/CoreSimulator"
-        ).path
-        if let simulators = model.node(at: simulatorPath), simulators.bytes > 500_000_000,
-          model.page == .cleanup
-        {
-          DisclosureGroup {
-            VStack(alignment: .leading, spacing: 10) {
-              Text(
-                "\(formatBytes(simulators.bytes)) in simulator devices and their app data. Remove devices you no longer need with Xcode’s device manager. For unused operating-system runtimes, open Xcode → Settings → Components and use the component’s information button to remove it."
-              ).font(.callout).foregroundStyle(.secondary)
-              HStack {
-                Button("Reveal simulator data") { model.reveal(simulatorPath) }
-                Link(
-                  "Apple’s component guide",
-                  destination: URL(
-                    string:
-                      "https://developer.apple.com/documentation/xcode/downloading-and-installing-additional-xcode-components"
-                  )!)
-              }.font(.caption)
-              Text(
-                "Room leaves simulator management to Xcode so its device database and runtime registrations stay consistent."
-              ).font(.caption).foregroundStyle(.secondary)
-            }.padding(.top, 10)
-          } label: {
-            HStack {
-              Label("Simulator storage to review", systemImage: "iphone.gen3")
-              Spacer()
-              Text(formatBytes(simulators.bytes)).monospacedDigit().foregroundStyle(.secondary)
-            }.font(.callout)
-          }.padding(15).background(.background, in: RoundedRectangle(cornerRadius: 12))
-        }
       }
       HStack(spacing: 12) {
         HStack {
           Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-          TextField("Search name or path", text: $model.search).textFieldStyle(.plain)
+          TextField("Search", text: $model.search).textFieldStyle(.plain)
         }.padding(9).background(.background, in: RoundedRectangle(cornerRadius: 8))
         Picker("Type", selection: $model.filter) {
           Text("All types").tag(nil as CandidateKind?)
@@ -284,8 +227,8 @@ struct ContentView: View {
           systemImage: model.scanning ? "magnifyingglass" : "checkmark.seal",
           description: Text(
             model.scanning
-              ? "Results will appear when the scan finishes."
-              : "Try another filter or scan a different folder.")
+              ? "Results appear when the scan finishes."
+              : "Change the filter or scan another folder.")
         )
         .frame(maxWidth: .infinity, minHeight: 180)
       } else {
@@ -293,8 +236,7 @@ struct ContentView: View {
           Text("\(model.items.count.formatted()) items").font(.caption.weight(.medium))
             .foregroundStyle(.secondary)
           Spacer()
-          Text("ON DISK · LARGEST FIRST").font(.system(size: 10, weight: .semibold)).tracking(0.7)
-            .foregroundStyle(.tertiary)
+          Text("Largest first").font(.caption).foregroundStyle(.tertiary)
         }
         LazyVStack(spacing: 0) {
           ForEach(model.items) { item in
@@ -303,20 +245,16 @@ struct ContentView: View {
           }
         }.background(.background, in: RoundedRectangle(cornerRadius: 14)).overlay(
           RoundedRectangle(cornerRadius: 14).strokeBorder(Color.primary.opacity(0.06)))
-        Text(
-          "“Rebuildable” means it can usually be recreated, not that every item is unused. Close related apps before cleaning. Sizes are allocated bytes; APFS clones and snapshots can affect space recovered."
-        ).font(.caption).foregroundStyle(.secondary).lineSpacing(3)
       }
     }.disabled(model.scanning || model.cleaning)
   }
   private func statCard(
-    _ title: String, value: String, caption: String, symbol: String, color: Color
+    _ title: String, value: String, symbol: String, color: Color
   ) -> some View {
     VStack(alignment: .leading, spacing: 10) {
       Label(title, systemImage: symbol).font(.caption.weight(.medium)).foregroundStyle(color)
       Text(value).font(.system(size: 24, weight: .semibold, design: .rounded)).monospacedDigit()
         .lineLimit(1).minimumScaleFactor(0.7)
-      Text(caption).font(.caption).foregroundStyle(.secondary).lineLimit(1)
     }.frame(maxWidth: .infinity, alignment: .leading).padding(16).background(
       color.opacity(0.055), in: RoundedRectangle(cornerRadius: 13))
   }
@@ -420,38 +358,63 @@ struct ContentView: View {
           Divider().padding(.leading, 56)
         }
       }.background(.background, in: RoundedRectangle(cornerRadius: 14))
-      Text(
-        "Folder totals include all readable contents. The map lists children using at least 1 MB; smaller entries are included in totals. Symlinks are not followed. System folders are inspection only."
-      ).font(.caption).foregroundStyle(.secondary).lineSpacing(3)
+      Text("Items under 1 MB hidden").font(.caption).foregroundStyle(.secondary)
+        .help(
+          "Totals include all readable items. Symlinks are not followed; system folders are inspection only."
+        )
     }
   }
   private var accessView: some View {
     VStack(alignment: .leading, spacing: 18) {
       GroupBox {
         VStack(alignment: .leading, spacing: 13) {
-          Text("A broader view with Full Disk Access").font(.headline)
+          Text("Full Disk Access").font(.headline)
           Text(
-            "macOS protects Mail, Messages, backups and some app data. To include more locations, add Room in System Settings → Privacy & Security → Full Disk Access, then quit and reopen Room. Permission is optional."
+            "To include protected app data, add Room in Privacy & Security → Full Disk Access, then reopen Room."
           )
           .font(.callout).foregroundStyle(.secondary)
           HStack {
-            Button("Open Full Disk Access", action: model.openPrivacy)
+            Button("Open Settings", action: model.openPrivacy)
             Button("Reveal Room") { model.reveal(Bundle.main.bundleURL.path) }
           }
           Divider()
-          Text(
-            "Default scan: your home folder, /Applications, /Library, /private/var, /Users/Shared, /opt and /usr/local. Cloud-managed folders are skipped unless chosen explicitly. Other users, separate volumes, inaccessible paths, APFS snapshots and purgeable storage can account for the rest. Room never removes system data or snapshots."
-          ).font(.caption).foregroundStyle(.secondary)
+          DisclosureGroup("Scan scope") {
+            Text(
+              "Scans your home folder, /Applications, /Library, /private/var, /Users/Shared, /opt and /usr/local. Cloud folders and separate volumes require an explicit folder scan. System data and snapshots are inspection only."
+            )
+            .font(.caption).foregroundStyle(.secondary).padding(.top, 6)
+          }
           if let report = model.report {
-            LabeledContent("Readable data scanned", value: formatBytes(report.scannedBytes))
+            LabeledContent("Scanned", value: formatBytes(report.scannedBytes))
             LabeledContent(
-              "Used space outside this accounting",
+              "Outside scan",
               value: formatBytes(max(0, model.disk.total - model.disk.free - report.scannedBytes)))
           }
           Button("Open macOS Storage settings", action: model.openStorage)
         }.padding(12)
       }
-      Text("Coverage gaps · \(model.report?.issues.count ?? 0)").font(.headline)
+      let simulatorPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
+        "Library/Developer/CoreSimulator"
+      ).path
+      if let simulators = model.node(at: simulatorPath), simulators.bytes > 500_000_000 {
+        GroupBox {
+          VStack(alignment: .leading, spacing: 12) {
+            LabeledContent("Simulator storage", value: formatBytes(simulators.bytes)).font(
+              .headline)
+            Text("Manage devices and runtimes in Xcode.").font(.callout).foregroundStyle(.secondary)
+            HStack {
+              Button("Reveal in Finder") { model.reveal(simulatorPath) }
+              Link(
+                "Xcode guide",
+                destination: URL(
+                  string:
+                    "https://developer.apple.com/documentation/xcode/downloading-and-installing-additional-xcode-components"
+                )!)
+            }
+          }.padding(12)
+        }
+      }
+      Text("Skipped locations · \(model.report?.issues.count ?? 0)").font(.headline)
       LazyVStack(alignment: .leading, spacing: 12) {
         ForEach(model.report?.issues ?? []) { issue in
           VStack(alignment: .leading, spacing: 4) {
@@ -467,7 +430,7 @@ struct ContentView: View {
     VStack(alignment: .leading, spacing: 16) {
       HStack {
         Text(
-          "Moving to Trash keeps files recoverable. Empty Trash in Finder when you are sure; this is when free space can increase."
+          "Restore items before emptying Trash."
         ).font(.callout).foregroundStyle(.secondary)
         Spacer()
         Button("Open Trash", action: model.openTrash)
@@ -475,7 +438,7 @@ struct ContentView: View {
       if model.receipts.isEmpty {
         ContentUnavailableView(
           "Nothing cleaned yet", systemImage: "clock.arrow.circlepath",
-          description: Text("Every cleanup will leave a restore receipt here."))
+          description: Text("Cleaned items appear here."))
       }
       ForEach(model.receipts) { receipt in
         HStack {
@@ -499,18 +462,16 @@ struct ContentView: View {
         ProgressView().controlSize(.small)
         Text("Working…").font(.callout)
       } else {
-        Image(systemName: model.selection.isEmpty ? "checkmark.shield" : "checkmark.circle.fill")
-          .foregroundStyle(model.selection.isEmpty ? Color.secondary : Color.orange)
         Text(
           model.selection.isEmpty
-            ? "Nothing selected. You’re in control."
+            ? "0 selected"
             : "\(model.selection.count) selected · \(formatBytes(model.selectedBytes))"
         )
         .font(.callout.weight(.medium))
       }
       Spacer()
       Button("Open Trash", action: model.openTrash).buttonStyle(.borderless)
-      Button("Review selection", action: model.review).buttonStyle(.borderedProminent).disabled(
+      Button("Review", action: model.review).buttonStyle(.borderedProminent).disabled(
         model.selection.isEmpty || !model.canClean)
     }.padding(.horizontal, 25).padding(.vertical, 16).background(.bar)
   }
@@ -522,13 +483,12 @@ struct ReviewSheet: View {
   let cancel: () -> Void
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      Label("A final look.", systemImage: "trash").font(
-        .system(size: 27, weight: .semibold, design: .rounded))
+      Label("Move to Trash", systemImage: "trash").font(.title2.weight(.semibold))
       Text(
-        "Move \(items.count) items · \(formatBytes(items.reduce(0) { $0 + $1.bytes })) to Trash?"
+        "\(items.count) \(items.count == 1 ? "item" : "items") · \(formatBytes(items.reduce(0) { $0 + $1.bytes }))"
       ).font(.headline)
       Text(
-        "Quit related apps first. Cached downloads and dependencies may need to be recreated. Review personal files and archives carefully; deletions in synced folders can propagate to other devices."
+        "Quit related apps first. Changes to synced files also affect other devices."
       ).font(.callout).foregroundStyle(.secondary)
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 14) {
@@ -547,7 +507,7 @@ struct ReviewSheet: View {
         }
       }.frame(maxHeight: 320)
       Label(
-        "Space is recovered after you empty Trash in Finder. You can restore these items from Cleanup history until then.",
+        "Empty Trash in Finder to free space. Restore from History until then.",
         systemImage: "info.circle"
       ).font(.callout).foregroundStyle(.secondary)
       HStack {
